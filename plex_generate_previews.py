@@ -87,7 +87,7 @@ if not FFMPEG_PATH:
     sys.exit(1)
 
 # Logging setup
-console = Console()
+console = Console(width=os.environ.get('CONSOLE_WIDTH', 180))
 logger.remove()
 logger.add(
     lambda _: console.print(_, end=''),

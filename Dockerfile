@@ -10,7 +10,7 @@ WORKDIR /app
 COPY requirements.txt .
 
 # Install the Python dependencies
-ENV PIP_BREAK_SYSTEM_PACKAGES 1
+ENV PIP_BREAK_SYSTEM_PACKAGES=1
 RUN pip3 install -r requirements.txt
 
 # Copy the Python script and .env file to the working directory
