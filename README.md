@@ -37,20 +37,22 @@ It supports
 You can customize various settings by modifying the environment variables. If you are running locally you can create
 a `.env` file
 
-|            Variables             | Function                                                                                                                                    |
-|:--------------------------------:|---------------------------------------------------------------------------------------------------------------------------------------------|
-|            `PLEX_URL`            | Plex server URL. (eg: http://localhost:32400)                                                                                               |
-|           `PLEX_TOKEN`           | Plex Token. ([click here for how to get a token](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/)) |
-|    `PLEX_BIF_FRAME_INTERVAL`     | Interval between preview images (default: 5, plex default: 2)                                                                                      |
-|     `PLEX_LOCAL_MEDIA_PATH`      | Path to Plex Media folder (eg: /path_to/plex/Library/Application Support/Plex Media Server/Media)                                           |
-| `THUMBNAIL_QUALITY`              | Preview image quality (2-6, default: 4, plex default: 3). 2 being the highest quality and largest file size and 6 being the lowest quality and smallest file size.   |
-|           `TMP_FOLDER`           | Temp folder for image generation. (default: /dev/shm/plex_generate_previews)                                                                |
-|          `PLEX_TIMEOUT`          | Timeout for Plex API requests in seconds (default: 60). If you have a large library, you might need to increase the timeout.                |
-|          `GPU_THREADS`           | Number of GPU threads for preview generation (default: 4)                                                                                   |
-|          `CPU_THREADS`           | Number of CPU threads for preview generation (default: 4)                                                                                   |
-| `PLEX_LOCAL_VIDEOS_PATH_MAPPING` | Leave blank unless you need to map your local media files to a remote path (eg: '/path/this/script/sees/to/video/library')                  |
-|    `PLEX_VIDEOS_PATH_MAPPING`    | Leave blank unless you need to map your local media files to a remote path (eg: '/path/plex/sees/to/video/library')                         |
-|           `LOG_LEVEL`            | Set to debug for troubleshooting                                                                                                            |
+|            Variables             | Function                                                                                                                                                    |
+|:--------------------------------:|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|            `PLEX_URL`            | Plex server URL. (eg: http://localhost:32400)                                                                                                               |
+|           `PLEX_TOKEN`           | Plex Token. ([click here for how to get a token](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/))                 |
+|    `PLEX_BIF_FRAME_INTERVAL`     | Interval between preview images (default: 5, plex default: 2)                                                                                               |
+|     `PLEX_LOCAL_MEDIA_PATH`      | Path to Plex Media folder (eg: /path_to/plex/Library/Application Support/Plex Media Server/Media)                                                           |
+|       `THUMBNAIL_QUALITY`        | Preview image quality (2-6, default: 4, plex default: 3). 2 being the highest quality and largest file size and 6 being the lowest quality and smallest file size. |
+|           `TMP_FOLDER`           | Temp folder for image generation. (default: /dev/shm/plex_generate_previews)                                                                                |
+|          `PLEX_TIMEOUT`          | Timeout for Plex API requests in seconds (default: 60). If you have a large library, you might need to increase the timeout.                                |
+|          `GPU_THREADS`           | Number of GPU threads for preview generation (default: 4)                                                                                                   |
+|          `CPU_THREADS`           | Number of CPU threads for preview generation (default: 4)                                                                                                   |
+| `PLEX_LOCAL_VIDEOS_PATH_MAPPING` | Leave blank unless you need to map your local media files to a remote path (eg: '/path/this/script/sees/to/video/library')                                  |
+|    `PLEX_VIDEOS_PATH_MAPPING`    | Leave blank unless you need to map your local media files to a remote path (eg: '/path/plex/sees/to/video/library')                                         |
+|    `PLEX_LIBRARIES`              | Leave blank unless you want to restrict which libraries this script will process. Enter the library names separated by commas. Case-insensitive. Example: "Movies, TV Shows" or "movies, tv shows"    |
+|           `LOG_LEVEL`            | Set to debug for troubleshooting                                                                                                                            |
+|    `REGENERATE_THUMBNAILS`       | Set to true to enable regeneration of thumbnails                                                                                                             |
 
 # Guide for Docker
 
@@ -69,10 +71,28 @@ In order to access GPUs in a container explicit access to the GPUs must be grant
 
 Please follow the steps outlined here [https://rocm.docs.amd.com/en/docs-5.0.2/deploy/docker.html](https://rocm.docs.amd.com/en/docs-5.0.2/deploy/docker.html)
 
-## docker-compose ([click here for more info](https://docs.linuxserver.io/general/docker-compose))
+### Intel iGPU / VAAPI
+If you're using Intel VAAPI for hardware acceleration and running the container as a non-root user, you must ensure the container user has permission to access /dev/dri/renderD128. This device is typically owned by the render group.
+
+Add the following to your docker-compose.yml:
 
 ```yaml
----
+services:
+  previews:
+    image: stevezau/plex_generate_vid_previews:latest
+    user: 1000:1000  # Replace with your user:group ID
+    group_add:
+      - 109  # Replace with GID of 'render' group (check with `getent group render`)
+    devices:
+      - /dev/dri:/dev/dri
+    ...
+```
+
+## docker-compose ([click here for more info](https://docs.linuxserver.io/general/docker-compose))
+
+The below exmapl is for Nvidia, you'll need to update it for Intel or AMD. 
+
+```yaml
 version: '3'
 services:
   previews:
@@ -176,7 +196,7 @@ python3 plex_preview_thumbnail_generator.py
      - Example: `//server/media/plex/tv`
 
 3. **Modify the Script's Environment File:**
-   - The script’s `.env` file only needs one specific adjustment for Unraid:
+   - The script's `.env` file only needs one specific adjustment for Unraid:
      - Set `PLEX_LOCAL_MEDIA_PATH` as follows:  
        ```plaintext
        PLEX_LOCAL_MEDIA_PATH=\\SERVER\appdata\plex\Library\Application Support\Plex Media Server\Media
